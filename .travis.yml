@@ -1,0 +1,9 @@
+---
+language: c
+before_install:
+  - pip install --user cpp-coveralls
+script:
+  - cp travis-local.mk local.mk
+  - make test
+after_success:
+  - coveralls --gcov-options '\-lp' $(for d in * */t; do printf " -i $d"; done)
