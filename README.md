@@ -1,2 +1,2 @@
-# MUDClient
+# MUDClient [![Build Status](https://travis-ci.org/Violette00/MUDClient.svg?branch=master)](https://travis-ci.org/Violette00/MUDClient) [![Coverage Status](https://coveralls.io/repos/github/Violette00/MUDClient/badge.svg?branch=master)](https://coveralls.io/github/Violette00/MUDClient?branch=master)
 A MUD client
