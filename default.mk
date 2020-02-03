@@ -25,7 +25,7 @@ ${TEST_BIN}: ${TEST_BIN}.c
 	@echo CC -o $@
 	@${CC} -o $@ $^ ${CFLAGS} ${LDFLAGS} -O0
 
-test:all ${TEST_BIN}
+test: all ${TEST_BIN}
 	@echo TEST ${NAME}
 	@echo
 	@for test in ${TESTS} ${TEST_BIN}; do \
