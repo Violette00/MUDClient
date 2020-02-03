@@ -1,6 +1,6 @@
 TARGETS = all test clean
 #PROJECTS = common mudclient telnet
-PROJECTS = 
+PROJECTS = mudclient telnet
 
 ${TARGETS}: ${PROJECTS}
 

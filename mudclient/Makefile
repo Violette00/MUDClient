@@ -1,6 +1,6 @@
 APP = mudclient
 
-SRC =
+SRC = main.c
 
 include ../config.mk
 include ../default.mk
