@@ -1,5 +1,12 @@
 ---
 language: c
+compiler:
+  - clang
+  - gcc
+os:
+  - linux
+  - osx
+
 before_install:
   - pip install --user cpp-coveralls
 script:
