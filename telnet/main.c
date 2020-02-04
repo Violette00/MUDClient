@@ -2,8 +2,9 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
+#include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 
@@ -66,7 +67,36 @@ connect_to_host(const char *hostname, const char *port)
 static int
 mainloop(int socket)
 {
+    int activity;
+    int maxfd;
+    const char *cause = NULL;
+    fd_set read_fds;
 
+    maxfd = socket;
+
+    while(1){
+        FD_ZERO(&read_fds);
+        FD_SET(socket, &read_fds);
+        
+        activity = select(maxfd + 1, &read_fds, NULL, NULL, NULL);
+
+        switch (activity){
+            case -1:
+                cause = "select()";
+                err(1, "%s", cause);
+
+            case 0:
+                // you should never get here
+                cause = "select() returns 0.\n";
+                err(1, "%s", "select() returns 0");
+
+            default:
+                /* All fd_sets should be checked */
+                if (FD_ISSET(socket, &read_fds){
+                    
+                }
+        }
+    }
 }
 
 int 
