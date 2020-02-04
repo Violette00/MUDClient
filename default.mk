@@ -44,7 +44,7 @@ test: all ${TEST_BIN}
 	@printf "# %-46s #\n" "coverage"
 	@echo "##################################################"
 	@echo
-	@if test -z "$$COV"; then ${COV} ${SRC} ${TEST_SRC}; fi
+	@if ! test -z "$$COV"; then ${COV} ${SRC} ${TEST_SRC}; fi
 
 clean:
 	@echo cleaning

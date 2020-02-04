@@ -9,8 +9,9 @@ os:
 
 before_install:
   - pip install --user cpp-coveralls
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update && brew install lcov; fi
 script:
-  - cp travis-local.mk local.mk
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cp travis-local.mk local.mk; fi
   - make test
 after_success:
   - coveralls --gcov-options '\-lp' $(for d in * */t; do printf " -i $d"; done)

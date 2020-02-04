@@ -2,8 +2,9 @@
 #include <err.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <sys/epoll.h>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -72,21 +73,24 @@ connect_to_host(const char *hostname, const char *port)
 static int
 mainloop(int socket)
 {
-	struct epoll_event events[MAX_EVENTS], ev;
-	int epfd, count;
-	unsigned char buffer[BUFSIZE];
+	struct pollfd pfds[1];
+	int count;
+	unsigned char buffer[BUFSIZE], out[BUFSIZE];
 
-	epfd = epoll_create(10);
-	ev.data.fd = socket;
-	ev.events = EPOLLIN;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
+	pfds[0].fd = socket;
+	pfds[0].events = POLLIN;
 
-	while (1) {
-		epoll_wait(epfd, events, MAX_EVENTS, -1);
-		count = read(socket, buffer, BUFSIZE);
-		assert(count >= 0);
-		printf("%s", buffer);
+
+	while (poll(pfds, 1, -1) >= 0) {
+		if (pfds[0].revents & POLLIN) {
+			count = read(socket, buffer, BUFSIZE);
+			assert(count >= 0);
+			process_commands(buffer, out, NULL);
+			printf("%s", out);
+		}
 	}
+
+	abort();
 }
 
 int
