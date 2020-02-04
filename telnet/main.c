@@ -1,13 +1,17 @@
+#include <assert.h>
 #include <err.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/select.h>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "../common/telnet.h"
+
+#define MAX_EVENTS 1
+#define BUFSIZE 2048
 
 static void usage(void);
 static int mainloop(int socket);
@@ -68,39 +72,24 @@ connect_to_host(const char *hostname, const char *port)
 static int
 mainloop(int socket)
 {
-    int activity;
-    int maxfd;
-    const char *cause = NULL;
-    fd_set read_fds;
+	struct epoll_event events[MAX_EVENTS], ev;
+	int epfd, count;
+	unsigned char buffer[BUFSIZE];
 
-    maxfd = socket;
-    FD_ZERO(&read_fds);
-    FD_SET(socket, &read_fds);
+	epfd = epoll_create(10);
+	ev.data.fd = socket;
+	ev.events = EPOLLIN;
+	epoll_ctl(epfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
 
-    while (1) {
-        
-        activity = select(maxfd + 1, &read_fds, NULL, NULL, NULL);
-
-        switch (activity) {
-            case -1:
-                cause = "select()";
-                err(1, "%s", cause);
-
-            case 0:
-                // you should never get here
-                cause = "select() returns 0.\n";
-                err(1, "%s", "select() returns 0");
-
-            default:
-                /* All fd_sets should be checked */
-                if (FD_ISSET(socket, &read_fds)){
-
-                }
-        }
-    }
+	while (1) {
+		epoll_wait(epfd, events, MAX_EVENTS, -1);
+		count = read(socket, buffer, BUFSIZE);
+		assert(count >= 0);
+		printf("%s", buffer);
+	}
 }
 
-int 
+int
 main(int argc, char **argv)
 {
     int s;
@@ -113,6 +102,7 @@ main(int argc, char **argv)
     }
 
     s = connect_to_host(argv[1], argv[2]);
+    mainloop(s);
 
     return 0;
 }
