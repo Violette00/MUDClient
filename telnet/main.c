@@ -73,14 +73,14 @@ mainloop(int socket)
     fd_set read_fds;
 
     maxfd = socket;
+    FD_ZERO(&read_fds);
+    FD_SET(socket, &read_fds);
 
-    while(1){
-        FD_ZERO(&read_fds);
-        FD_SET(socket, &read_fds);
+    while (1) {
         
         activity = select(maxfd + 1, &read_fds, NULL, NULL, NULL);
 
-        switch (activity){
+        switch (activity) {
             case -1:
                 cause = "select()";
                 err(1, "%s", cause);
@@ -92,8 +92,8 @@ mainloop(int socket)
 
             default:
                 /* All fd_sets should be checked */
-                if (FD_ISSET(socket, &read_fds){
-                    
+                if (FD_ISSET(socket, &read_fds)){
+
                 }
         }
     }
