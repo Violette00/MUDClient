@@ -27,7 +27,7 @@ process_commands(const unsigned char *in, unsigned char *out, Command *commands)
 				bytes[i++] = *(start++);
 				bytes[i++] = *(start++);
 			}
-			bytes[i++] = *(start++);
+			bytes[i]= *start;
 		}
 
 		if (i == BUFSIZE)
