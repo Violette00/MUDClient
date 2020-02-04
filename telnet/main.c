@@ -75,7 +75,7 @@ mainloop(int socket)
 {
 	struct pollfd pfds[1];
 	int count;
-	char buffer[BUFSIZE];
+	unsigned char buffer[BUFSIZE], out[BUFSIZE];
 
 	pfds[0].fd = socket;
 	pfds[0].events = POLLIN;
@@ -85,7 +85,8 @@ mainloop(int socket)
 		if (pfds[0].revents & POLLIN) {
 			count = read(socket, buffer, BUFSIZE);
 			assert(count >= 0);
-			printf("%s", buffer);
+			process_commands(buffer, out, NULL);
+			printf("%s", out);
 		}
 	}
 
