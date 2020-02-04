@@ -17,9 +17,12 @@ options:
 	@echo CC $<
 	@${CC} -c ${CFLAGS} $<
 
-${NAME}: ${OBJ}
+${NAME}: ${OBJ} ${EXTERNAL_OBJ}
 	@echo CC -o $@
 	@${CC} -o $@ $^ ${LDFLAGS}
+
+${EXTERNAL_OBJ}:
+	$(MAKE) -C ../common
 
 ${TEST_BIN}: ${TEST_BIN}.c
 	@echo CC -o $@

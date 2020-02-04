@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "../common/telnet.h"
 
 static void usage(void);
 static int mainloop(int socket);

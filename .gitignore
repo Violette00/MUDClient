@@ -53,3 +53,6 @@ dkms.conf
 
 # Mac Folder Files
 .DS_Store
+
+# Vim files
+*.swp
