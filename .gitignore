@@ -56,3 +56,8 @@ dkms.conf
 
 # Vim files
 *.swp
+.tags
+
+# Binaries
+mudclient/mud-mudclient
+telnet/mud-telnet

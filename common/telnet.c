@@ -30,8 +30,11 @@ process_commands(const unsigned char *in, unsigned char *out, Command *commands)
 			fprintf(stderr, "%d, ", *start);
 			start++;
 		}
+		start--;
 		fprintf(stderr, "]\n");
+
 	}
+	*out = '\0';
 
 	return 0;
 }

@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "../common/telnet.h"
+#include "../common/log.h"
 
 #define MAX_EVENTS 1
 #define BUFSIZE 2048
@@ -73,20 +74,46 @@ connect_to_host(const char *hostname, const char *port)
 static int
 mainloop(int socket)
 {
-	struct pollfd pfds[1];
+	struct pollfd pfds[2];
 	int count;
 	unsigned char buffer[BUFSIZE], out[BUFSIZE];
 
 	pfds[0].fd = socket;
 	pfds[0].events = POLLIN;
 
+	pfds[1].fd = STDIN_FILENO;
+	pfds[1].events = POLLIN;
 
-	while (poll(pfds, 1, -1) >= 0) {
+	out[0] = buffer[0] = '\0';
+	while (poll(pfds, 2, -1) >= 0) {
+		/* end loop on either hangup */
+		if (pfds[0].revents & POLLHUP || pfds[1].revents & POLLHUP)
+			return 0;
+
+		if (pfds[0].revents & POLLERR || pfds[1].revents & POLLERR)
+			abort();
+
+		if (pfds[0].revents & POLLNVAL || pfds[1].revents & POLLNVAL)
+			abort();
+
 		if (pfds[0].revents & POLLIN) {
 			count = read(socket, buffer, BUFSIZE);
-			assert(count >= 0);
+			LOG_INFO("got %d bytes", count);
+			if (count == 0)
+				return 0;
+			assert(count >= 0 && count != BUFSIZE);
+			buffer[count] = '\0';
 			process_commands(buffer, out, NULL);
 			printf("%s", out);
+		}
+
+		if (pfds[1].revents & POLLIN) {
+			count = read(STDIN_FILENO, buffer, BUFSIZE);
+			assert(count >= 0 && count < BUFSIZE);
+			buffer[count] = '\0';
+			LOG_INFO_NONL("writting %s", buffer);
+			count = write(socket, buffer, count);
+			assert(count >= 0);
 		}
 	}
 
