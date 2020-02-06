@@ -38,12 +38,11 @@ process_commands(const unsigned char *in, unsigned char *out, Command *commands)
 						commands[cmd_count].option[option_count] = *start;
 						++start;
 						++option_count;
-						assert(option_count < 16);
+						assert(option_count < MAX_OPT);
 					}
 					++start;
 					commands[cmd_count].opt_count = option_count;
 				} else {
-					commands[cmd_count].option[0] = 0;
 					commands[cmd_count].opt_count = 0;
 				}
 				++cmd_count;
