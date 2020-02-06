@@ -28,20 +28,28 @@ handle_commands(int socket, const Command *cmds, int ncmds)
 {
 	unsigned char buffer[BUFSIZE];
 
+	int i;
+
 	for ( ; ncmds > 0; ncmds--, cmds++) {
 		LOG_INFO("processing command %d", cmds->command);
 		if (cmds->command == WILL) {
-			LOG_INFO("replying DONT to %d", cmds->option);
+			LOG_INFO("replying DONT to %d", cmds->option[0]);
 			buffer[0] = IAC;
 			buffer[1] = DONT;
-			buffer[2] = cmds->option;
+			buffer[2] = cmds->option[0];
 			assert(write(socket, buffer, 3) == 3);
 		} else if (cmds->command == DO) {
-			LOG_INFO("replying WONT to %d", cmds->option);
+			LOG_INFO("replying WONT to %d", cmds->option[0]);
 			buffer[0] = IAC;
 			buffer[1] = WONT;
-			buffer[2] = cmds->option;
+			buffer[2] = cmds->option[0];
 			assert(write(socket, buffer, 3) == 3);
+		} else if (cmds->command == SB){
+			LOG_INFO_NONL("Got subnegotiation: %d [", cmds->option[0]);
+			for (i = 1; i < cmds->opt_count; ++i){
+				fprintf(stderr, " %d", cmds->option[i]);
+			}
+			fprintf(stderr, "]\n");
 		} else if (cmds->command == GA) {
 			/* eat Go Ahead as nobody cares */
 		} else {

@@ -19,7 +19,8 @@ typedef enum {
 
 typedef struct {
 	unsigned char command;
-	unsigned char option;	/* used for will, wont, do, dont */
+	unsigned char option[16];	/* used for will, wont, do, dont */
+	unsigned int opt_count;
 } Command;
 
 int process_commands(const unsigned char *in, unsigned char *out,
