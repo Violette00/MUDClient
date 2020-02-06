@@ -1,3 +1,5 @@
+#define MAX_OPT 16
+
 typedef enum {
 	SE=240,		/* Subnegotiation end */
 	NOP=241,	/* No op */
@@ -19,7 +21,8 @@ typedef enum {
 
 typedef struct {
 	unsigned char command;
-	unsigned char option;	/* used for will, wont, do, dont */
+	unsigned char option[MAX_OPT];	/* used for will, wont, do, dont */
+	unsigned int opt_count;
 } Command;
 
 int process_commands(const unsigned char *in, unsigned char *out,

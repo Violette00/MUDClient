@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "log.h"
 #include "telnet.h"
 
@@ -12,6 +14,7 @@ process_commands(const unsigned char *in, unsigned char *out, Command *commands)
 {
 	unsigned const char *start;
 	int cmd_count = 0;
+	int option_count = 0;
 
 	for (start = in; *start; ++start) {
 		if (*start < 128) {
@@ -26,9 +29,20 @@ process_commands(const unsigned char *in, unsigned char *out, Command *commands)
 				commands[cmd_count].command = *start;
 				if (*start >= WILL && *start <= DONT) {
 					++start;
-					commands[cmd_count].option = *start;
+					commands[cmd_count].option[0] = *start;
+					commands[cmd_count].opt_count = 1;
+				} else if (*start == SB) {
+					++start;
+					while (*start != IAC || *(start+1) != SE){
+						commands[cmd_count].option[option_count] = *start;
+						++start;
+						++option_count;
+						assert(option_count < MAX_OPT);
+					}
+					++start;
+					commands[cmd_count].opt_count = option_count;
 				} else {
-					commands[cmd_count].option = 0;
+					commands[cmd_count].opt_count = 0;
 				}
 				++cmd_count;
 			} else {
