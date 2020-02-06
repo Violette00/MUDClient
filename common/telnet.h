@@ -21,7 +21,7 @@ typedef enum {
 
 typedef struct {
 	unsigned char command;
-	unsigned char option[MAX_OPT];	/* used for will, wont, do, dont */
+	unsigned char options[MAX_OPT];	/* used for will, wont, do, dont */
 	unsigned int opt_count;
 } Command;
 
