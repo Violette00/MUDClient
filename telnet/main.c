@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <err.h>
+#include <limits.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,36 +17,69 @@
 #define BUFSIZE 2048
 #define COMMAND_COUNT 32
 
+typedef struct {
+	char will_will, will_do;
+	void (*handle_sb)(int, Command*);
+} CommandHandler;
+
 static void usage(void);
 static int mainloop(int socket);
 static int connect_to_host(const char *hostname, const char *port);
-static void handle_commands(int socket, const Command *cmds, int ncmds);
+static void handle_commands(int socket, const Command *cmds, int ncmds,
+		CommandHandler *handlers);
+static void handle_will(unsigned char *buffer, unsigned char option,
+		const CommandHandler *handlers);
+static void handle_do(unsigned char *buffer, unsigned char option,
+		const CommandHandler *handlers);
 
 static char *argv0;
 
 static void
-handle_commands(int socket, const Command *cmds, int ncmds)
+handle_will(unsigned char *buffer, unsigned char option,
+		const CommandHandler *handlers) {
+	buffer[0] = IAC;
+	if (handlers[option].will_do) {
+		LOG_INFO("replying DO to %d", option);
+		buffer[1] = DO;
+	} else {
+		LOG_INFO("replying DONT to %d", option);
+		buffer[1] = DONT;
+	}
+	buffer[2] = option;
+}
+
+static void
+handle_do(unsigned char *buffer, unsigned char option,
+		const CommandHandler *handlers) {
+	buffer[0] = IAC;
+	if (handlers[option].will_will) {
+		LOG_INFO("replying WILL to %d", option);
+		buffer[1] = WILL;
+	} else {
+		LOG_INFO("replying WONT to %d", option);
+		buffer[1] = WONT;
+	}
+	buffer[2] = option;
+}
+
+static void
+handle_commands(int socket, const Command *cmds, int ncmds,
+		CommandHandler *handlers)
 {
 	unsigned char buffer[BUFSIZE];
-
-	int i;
+	unsigned i;
 
 	for ( ; ncmds > 0; ncmds--, cmds++) {
 		LOG_INFO("processing command %d", cmds->command);
 		if (cmds->command == WILL) {
-			LOG_INFO("replying DONT to %d", cmds->option[0]);
-			buffer[0] = IAC;
-			buffer[1] = DONT;
-			buffer[2] = cmds->option[0];
+			handle_will(buffer, cmds->option[0], handlers);
 			assert(write(socket, buffer, 3) == 3);
 		} else if (cmds->command == DO) {
-			LOG_INFO("replying WONT to %d", cmds->option[0]);
-			buffer[0] = IAC;
-			buffer[1] = WONT;
-			buffer[2] = cmds->option[0];
+			handle_do(buffer, cmds->option[0], handlers);
 			assert(write(socket, buffer, 3) == 3);
 		} else if (cmds->command == SB){
-			LOG_INFO_NONL("Got subnegotiation: %d [", cmds->option[0]);
+			LOG_INFO_NONL("Got subnegotiation: %d [",
+					cmds->option[0]);
 			for (i = 1; i < cmds->opt_count; ++i){
 				fprintf(stderr, " %d", cmds->option[i]);
 			}
@@ -115,6 +149,9 @@ mainloop(int socket)
 	int count, cmd_count;
 	unsigned char buffer[BUFSIZE], out[BUFSIZE];
 	Command commands[COMMAND_COUNT];
+	CommandHandler handlers[UCHAR_MAX];
+
+	memset(handlers, 0, sizeof(CommandHandler) * UCHAR_MAX);
 
 	pfds[0].fd = socket;
 	pfds[0].events = POLLIN;
@@ -141,7 +178,7 @@ mainloop(int socket)
 				return 0;
 			buffer[count] = '\0';
 			cmd_count = process_commands(buffer, out, commands);
-			handle_commands(socket, commands, cmd_count);
+			handle_commands(socket, commands, cmd_count, handlers);
 			printf("%s", out);
 		}
 
