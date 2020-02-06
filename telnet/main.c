@@ -19,7 +19,7 @@
 
 typedef struct {
 	char will_will, will_do;
-	void (*handle_sb)(int, Command*);
+	void (*handle_sb)(int, const Command*);
 } CommandHandler;
 
 static void usage(void);
@@ -31,8 +31,41 @@ static void handle_will(unsigned char *buffer, unsigned char option,
 		const CommandHandler *handlers);
 static void handle_do(unsigned char *buffer, unsigned char option,
 		const CommandHandler *handlers);
+static void handle_subnegotiation(int socket, const Command *cmd,
+		CommandHandler *handlers);
 
 static char *argv0;
+
+static void
+handle_tt_sb(int socket, const Command *cmd)
+{
+	unsigned char buffer[BUFSIZE];
+	char *ttype;
+	size_t ttype_len;
+	unsigned i;
+
+	assert(cmd->opt_count == 2);
+	assert(cmd->options[1] == 1);
+
+	buffer[0] = IAC;
+	buffer[1] = SB;
+	buffer[2] = 24; /* terminal-type */
+	buffer[3] = 0; /* is */
+	ttype = getenv("TERM");
+	ttype = ttype ? ttype : "screen";	/* default to screen */
+	LOG_INFO("using terminal type %s", ttype);
+	ttype_len = strlen(ttype);
+	memcpy(buffer + 4, ttype, ttype_len);
+	buffer[ttype_len + 4] = IAC;
+	buffer[ttype_len + 5] = SE;
+
+	LOG_INFO_NONL("sending terminal-type reply: [ ");
+	for (i = 0; i < ttype_len + 6; ++i)
+		fprintf(stderr, "%d ", buffer[i]);
+	fprintf(stderr, "]\n");
+
+	assert(write(socket, buffer, ttype_len + 6) > 0);
+}
 
 static void
 handle_will(unsigned char *buffer, unsigned char option,
@@ -63,27 +96,37 @@ handle_do(unsigned char *buffer, unsigned char option,
 }
 
 static void
+handle_subnegotiation(int socket, const Command *cmd, CommandHandler *handlers)
+{
+	unsigned i;
+	unsigned char option = cmd->options[0];
+
+	LOG_INFO_NONL("Got subnegotiation: %d [", option);
+	for (i = 1; i < cmd->opt_count; ++i)
+		fprintf(stderr, " %d", cmd->options[i]);
+	fprintf(stderr, " ]\n");
+	if (handlers[option].handle_sb)
+		handlers[option].handle_sb(socket, cmd);
+	else
+		LOG_INFO("ignoring option %d", option);
+}
+
+static void
 handle_commands(int socket, const Command *cmds, int ncmds,
 		CommandHandler *handlers)
 {
 	unsigned char buffer[BUFSIZE];
-	unsigned i;
 
 	for ( ; ncmds > 0; ncmds--, cmds++) {
 		LOG_INFO("processing command %d", cmds->command);
 		if (cmds->command == WILL) {
-			handle_will(buffer, cmds->option[0], handlers);
+			handle_will(buffer, cmds->options[0], handlers);
 			assert(write(socket, buffer, 3) == 3);
 		} else if (cmds->command == DO) {
-			handle_do(buffer, cmds->option[0], handlers);
+			handle_do(buffer, cmds->options[0], handlers);
 			assert(write(socket, buffer, 3) == 3);
 		} else if (cmds->command == SB){
-			LOG_INFO_NONL("Got subnegotiation: %d [",
-					cmds->option[0]);
-			for (i = 1; i < cmds->opt_count; ++i){
-				fprintf(stderr, " %d", cmds->option[i]);
-			}
-			fprintf(stderr, "]\n");
+			handle_subnegotiation(socket, cmds, handlers);
 		} else if (cmds->command == GA) {
 			/* eat Go Ahead as nobody cares */
 		} else {
@@ -142,6 +185,13 @@ connect_to_host(const char *hostname, const char *port)
     return s;
 }
 
+static void
+set_handlers(CommandHandler *handlers)
+{
+	handlers[24].will_will = 1;
+	handlers[24].handle_sb = handle_tt_sb;
+}
+
 static int
 mainloop(int socket)
 {
@@ -152,6 +202,7 @@ mainloop(int socket)
 	CommandHandler handlers[UCHAR_MAX];
 
 	memset(handlers, 0, sizeof(CommandHandler) * UCHAR_MAX);
+	set_handlers(handlers);
 
 	pfds[0].fd = socket;
 	pfds[0].events = POLLIN;
