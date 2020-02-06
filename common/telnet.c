@@ -1,7 +1,5 @@
-#include <stdio.h>
-
-#include "telnet.h"
 #include "log.h"
+#include "telnet.h"
 
 #define BUFSIZE 32
 
@@ -12,29 +10,36 @@
 int
 process_commands(const unsigned char *in, unsigned char *out, Command *commands)
 {
-	unsigned const char *start;
+	unsigned const char *start, *orig;
+	int cmd_count = 0;
 
-	for (start = in; *start; start++) {
+	orig = out;
+	for (start = in; *start; ++start) {
 		if (*start < 128) {
-			*(out++) = *start;
+			*out = *start;
+			++out;
 			continue;
 		}
 
-		LOG_INFO_NONL("got bytes [");
 		while (*start > 127) {
 			if (*start == IAC) {
-				fprintf(stderr, "%d, %d, ", *start,
-						*(start+1));
-				start += 2;
+				++start;
+				commands[cmd_count].command = *start;
+				if (*start >= WILL && *start <= DONT) {
+					++start;
+					commands[cmd_count].option = *start;
+				} else {
+					commands[cmd_count].option = 0;
+				}
+				++cmd_count;
+			} else {
+				LOG_INFO("unhandled byte: %d", *start);
 			}
-			fprintf(stderr, "%d, ", *start);
-			start++;
+			++start;
 		}
-		start--;
-		fprintf(stderr, "]\n");
-
+		--start;
 	}
 	*out = '\0';
 
-	return 0;
+	return cmd_count;
 }

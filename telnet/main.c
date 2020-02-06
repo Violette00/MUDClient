@@ -12,14 +12,43 @@
 #include "../common/telnet.h"
 #include "../common/log.h"
 
-#define MAX_EVENTS 1
+#define MAX_EVENTS 2
 #define BUFSIZE 2048
+#define COMMAND_COUNT 32
 
 static void usage(void);
 static int mainloop(int socket);
 static int connect_to_host(const char *hostname, const char *port);
+static void handle_commands(int socket, const Command *cmds, int ncmds);
 
 static char *argv0;
+
+static void
+handle_commands(int socket, const Command *cmds, int ncmds)
+{
+	unsigned char buffer[BUFSIZE];
+
+	for ( ; ncmds > 0; ncmds--, cmds++) {
+		LOG_INFO("processing command %d", cmds->command);
+		if (cmds->command == WILL) {
+			LOG_INFO("replying DONT to %d", cmds->option);
+			buffer[0] = IAC;
+			buffer[1] = DONT;
+			buffer[2] = cmds->option;
+			assert(write(socket, buffer, 3) == 3);
+		} else if (cmds->command == DO) {
+			LOG_INFO("replying WONT to %d", cmds->option);
+			buffer[0] = IAC;
+			buffer[1] = WONT;
+			buffer[2] = cmds->option;
+			assert(write(socket, buffer, 3) == 3);
+		} else if (cmds->command == GA) {
+			/* eat Go Ahead as nobody cares */
+		} else {
+			LOG_INFO("ignoring command: %d", cmds->command);
+		}
+	}
+}
 
 static void
 usage(void)
@@ -74,9 +103,10 @@ connect_to_host(const char *hostname, const char *port)
 static int
 mainloop(int socket)
 {
-	struct pollfd pfds[2];
-	int count;
+	struct pollfd pfds[MAX_EVENTS];
+	int count, cmd_count;
 	unsigned char buffer[BUFSIZE], out[BUFSIZE];
+	Command commands[COMMAND_COUNT];
 
 	pfds[0].fd = socket;
 	pfds[0].events = POLLIN;
@@ -85,8 +115,8 @@ mainloop(int socket)
 	pfds[1].events = POLLIN;
 
 	out[0] = buffer[0] = '\0';
-	while (poll(pfds, 2, -1) >= 0) {
-		/* end loop on either hangup */
+	while (poll(pfds, MAX_EVENTS, -1) >= 0) {
+		/* end loop on either end hangup */
 		if (pfds[0].revents & POLLHUP || pfds[1].revents & POLLHUP)
 			return 0;
 
@@ -97,19 +127,20 @@ mainloop(int socket)
 			abort();
 
 		if (pfds[0].revents & POLLIN) {
-			count = read(socket, buffer, BUFSIZE);
+			count = read(socket, buffer, BUFSIZE - 1);
 			LOG_INFO("got %d bytes", count);
 			if (count == 0)
 				return 0;
-			assert(count >= 0 && count != BUFSIZE);
 			buffer[count] = '\0';
-			process_commands(buffer, out, NULL);
+			cmd_count = process_commands(buffer, out, commands);
+			handle_commands(socket, commands, cmd_count);
 			printf("%s", out);
 		}
 
 		if (pfds[1].revents & POLLIN) {
-			count = read(STDIN_FILENO, buffer, BUFSIZE);
-			assert(count >= 0 && count < BUFSIZE);
+			count = read(STDIN_FILENO, buffer, BUFSIZE - 1);
+			if (count == 0)
+				return 0;
 			buffer[count] = '\0';
 			LOG_INFO_NONL("writting %s", buffer);
 			count = write(socket, buffer, count);
@@ -137,4 +168,3 @@ main(int argc, char **argv)
 
     return 0;
 }
-
