@@ -10,10 +10,9 @@
 int
 process_commands(const unsigned char *in, unsigned char *out, Command *commands)
 {
-	unsigned const char *start, *orig;
+	unsigned const char *start;
 	int cmd_count = 0;
 
-	orig = out;
 	for (start = in; *start; ++start) {
 		if (*start < 128) {
 			*out = *start;
